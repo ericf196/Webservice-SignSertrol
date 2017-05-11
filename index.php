@@ -17,7 +17,7 @@ $app = new \Slim\App;
     return $response;
 });*/
 
-$app->get('/empresas[/{codigoEmpresa:.*}]',  function (Request $request, Response $response, $args) { // parametros opcionales
+$app->get('/empresas[/{codigoEmpresa:.*}]',  function (Request $request, Response $response, $args) { // busca por codigo de la empresa
 					
 	//echo $ticket_id = (string)$args['nombreEmpresa'];
 	$db_host = "localhost";
@@ -49,7 +49,7 @@ $app->get('/empresas[/{codigoEmpresa:.*}]',  function (Request $request, Respons
 });
 
 
-$app->get('/proyectos[/{codigoProyecto:.*}]',  function (Request $request, Response $response, $args) { // parametros opcionales
+$app->get('/proyectos[/{codigoProyecto:.*}]',  function (Request $request, Response $response, $args) { // busca por codigo de proyectos
 					
 	//echo (string)$args['codigoProyecto'];
 	
@@ -94,7 +94,7 @@ $app->get('/proyectos[/{codigoProyecto:.*}]',  function (Request $request, Respo
 
 
 
-$app->get('/login/{nombreUser}/{passwordUser}',  function (Request $request, Response $response , $args) { 
+$app->get('/login/{nombreUser}/{passwordUser}',  function (Request $request, Response $response , $args) { // login de el usuario se trae los proyectos relacionados con ese usuario
 		
 	$db_host = "localhost";
 	$db_user = "root";
@@ -157,7 +157,7 @@ if ($args) {
 });
 
 
-$app->get('/proyectouser/{nombreUser}',  function (Request $request, Response $response, $args) { 
+$app->get('/proyectouser/{nombreUser}',  function (Request $request, Response $response, $args) { // proyectos relacionados al usuario
 		
 	$db_host = "localhost";
 	$db_user = "root";
@@ -191,5 +191,127 @@ $app->get('/proyectouser/{nombreUser}',  function (Request $request, Response $r
     echo json_encode($data);
 });
 
+
+$app->post('/insertarempresas',  function (Request $request, Response $response) {	//insertar empresas		
+	//echo (string)$args['codigoProyecto'];
+	
+	$db_host = "localhost";
+	$db_user = "root";
+	$db_pass = "";
+	$db_name = "signsertrol";
+
+ 	$mysqli = new mysqli($db_host, $db_user, $db_pass, $db_name);
+
+ 	$nombreEmpresa=$request->getParam('NombreEmpresa');
+ 	$telefonoEmpresa=$request->getParam('TelefonoEmpresa');
+ 	$direccionEmpresa=$request->getParam('DireccionEmpresa');
+
+ 	//echo $nombreEmpresa;
+
+ 	$sql="INSERT INTO empresa(NombreEmpresa, TelefonoEmpresa, DireccionEmpresa) VALUES ('". $nombreEmpresa ." ','". $telefonoEmpresa ."','". $direccionEmpresa ."')";
+
+ 	if($nombreEmpresa && $telefonoEmpresa && $direccionEmpresa){
+
+			$result = $mysqli->query($sql);
+		    
+		    if($result){
+		    	$json[] = array( "Mensaje"  => "Se inserto la empresa");
+		   	}else{
+		   		$json[] = array( "Mensaje"  => "No se ha insertado la empresa");
+		   	}
+
+	}else{
+		$json[] = array( "Mensaje"  => "Faltan campos en la peticion");
+	}
+		
+   	$data['data'] = $json;
+   	
+    echo json_encode($data);
+
+
+});
+
+
+
+$app->post('/insertarproyectos[/{user:.*}]',  function (Request $request, Response $response, $args) {	//Insertar proyectos SIN relacionarlos con un usuario	
+	
+	$db_host = "localhost";
+	$db_user = "root";
+	$db_pass = "";
+	$db_name = "signsertrol";
+
+ 	$mysqli = new mysqli($db_host, $db_user, $db_pass, $db_name);
+
+ 	$nombreProyecto=$request->getParam('NombreProyecto');
+ 	$descripcionProyecto=$request->getParam('DescripcionProyecto');
+ 	$fechaCreacion=$request->getParam('FechaCreacion');
+ 	$nombreEmpresa=$request->getParam('NombreEmpresa');
+
+
+ 	$sql_empresa="SELECT IdEmpresa FROM empresa WHERE NombreEmpresa= '". $nombreEmpresa ."' ";
+
+	$variable_user= (string)$args['user'];
+	$sql_id_user="SELECT IdUser FROM user WHERE NombreUser= '". $variable_user ."' "; //valida si el user que viene por parametro existe
+	$result_id_user = $mysqli->query($sql_id_user);
+	$id_user[]= $result_id_user->fetch_assoc();
+	$userValido = ($result_id_user->num_rows!=0) ? TRUE : FALSE;
+
+ 	if($nombreProyecto && $descripcionProyecto && $fechaCreacion && $nombreEmpresa && $userValido){
+ 		$result_empresa = $mysqli->query($sql_empresa);
+
+ 		if($result_empresa->num_rows!=0){
+				$idEmpresa[]= $result_empresa->fetch_assoc();
+
+	 			$sql="INSERT INTO proyecto(NombreProyecto, DescripcionProyecto, FechaCreacion, IdEmpresa) VALUES ('". $nombreProyecto ." ','". $descripcionProyecto ."','". $fechaCreacion ."','". $idEmpresa[0]['IdEmpresa'] ."')";
+
+				$result = $mysqli->query($sql);
+
+				if ($args){
+
+					$variable_user= (string)$args['user'];
+					$sql_id_proyecto_max="SELECT Max(IdProyecto) AS IdProyecto FROM proyecto";
+					//$sql_id_user="SELECT IdUser FROM user WHERE NombreUser= '". $variable_user ."' ";
+
+					$result_id_proyecto_max = $mysqli->query($sql_id_proyecto_max);
+					//$result_id_user = $mysqli->query($sql_id_user);
+
+					$id_proyecto_max[]= $result_id_proyecto_max->fetch_assoc();
+					//$id_user[]= $result_id_user->fetch_assoc();
+
+					$sql_user="INSERT INTO userxproyecto(IdProyecto, IdUser) VALUES ('". $id_proyecto_max[0]['IdProyecto'] ." ','". $id_user[0]['IdUser'] ."')";
+
+					$result_user = $mysqli->query($sql_user);
+		    
+				    if($result_user){
+				    	$json[] = array( "Mensaje"  => "Se inserto el proyecto con un usuario relacionado");
+				   	}else{
+				   		$json[] = array( "Mensaje"  => "No inserto el proyecto con un usuario relacionado");
+				   	}
+
+				}else{
+
+					if($result){
+			    		$json[] = array( "Mensaje"  => "Se inserto el proyecto correctamente");
+				   	}else{
+				   		$json[] = array( "Mensaje"  => "No se ha insertado el proyecto");
+				   	}
+
+				}
+			    
+		
+		}else{
+			$json[] = array( "Mensaje"  => "La empresa no se ha encontrado");
+		}
+
+	}else{
+		$json[] = array( "Mensaje"  => "Faltan campos en la peticion o el usuario por parametro no exite");
+	}
+		
+   	$data['data'] = $json;
+   	
+    echo json_encode($data);
+
+
+});
 
 $app->run();
