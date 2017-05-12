@@ -5,7 +5,7 @@ use \Psr\Http\Message\ResponseInterface as Response;
 
 
 require 'vendor/autoload.php';
-require 'db_config.php';
+require 'db_config.php'; // no funciona
 //echo getcwd();
 
 
@@ -94,7 +94,7 @@ $app->get('/proyectos[/{codigoProyecto:.*}]',  function (Request $request, Respo
 
 
 
-$app->get('/login/{nombreUser}/{passwordUser}',  function (Request $request, Response $response , $args) { // login de el usuario se trae los proyectos relacionados con ese usuario
+$app->post('/login/{nombreUser}/{passwordUser}',  function (Request $request, Response $response , $args) { // login de el usuario se trae los proyectos relacionados con ese usuario    FALTA VALIDAR LOS CAMPOS
 		
 	$db_host = "localhost";
 	$db_user = "root";
@@ -110,46 +110,52 @@ if ($args) {
 
     $sql= "SELECT * FROM user WHERE NombreUser= '". $variableNombre ."' AND  PasswordUser= '". $variablePassword ."'";
 
+
+
+
     $sql1= "SELECT CodigoProyecto, NombreProyecto, DescripcionProyecto, NombreEmpresa FROM (((userxproyecto UXP INNER JOIN proyecto P ON UXP.IdProyecto = P.IdProyecto) INNER JOIN user U ON U.IdUser = UXP.IdUser) INNER JOIN empresa EMP ON EMP.IdEmpresa = P.IdEmpresa) WHERE UXP.IdUser=(SELECT IdUser FROM user WHERE NombreUser='". $variableNombre ."')";
 
 
     $result = $mysqli->query($sql); 
+	if ($result->num_rows!=0) {
+		
+	    $json_response = array(); //Create an array
+	    while ($row = $result->fetch_assoc()){
+	        $row_array = array();
+	        	     
+	        $row_array['NombreUser'] = $row['NombreUser'];
+	        $row_array['PasswordUser'] = $row['PasswordUser'];
+	        
+	        $row_array['proyectos'] = array();
+	         
+	        $result1 = $mysqli->query($sql1); 
 
-    $json_response = array(); //Create an array
+	        $numero_filas =  mysqli_num_rows($result1);
 
+	    	if($numero_filas>0){
+		        while ($proyectos_user = $result1->fetch_assoc()){
+		            $row_array['proyectos'][] = array(
+		                'CodigoProyecto' => $proyectos_user['CodigoProyecto'],
+		                'NombreProyecto' => $proyectos_user['NombreProyecto'],
+		                'DescripcionProyecto' => $proyectos_user['DescripcionProyecto'],
+		                'NombreEmpresa' => $proyectos_user['NombreEmpresa']
+		            );
 
-    while ($row = $result->fetch_assoc()){
-        $row_array = array();
-        	     
-        $row_array['NombreUser'] = $row['NombreUser'];
-        $row_array['PasswordUser'] = $row['PasswordUser'];
-        
-        $row_array['proyectos'] = array();
-         
-        $result1 = $mysqli->query($sql1); 
+		        }
 
-        $numero_filas =  mysqli_num_rows($result1);
+	        }else{
+	        		$row_array['proyectos'][] = array(
+		                'Mensaje' => 'Este Usuario no tiene proyectos asociados'
+		            );
+			}
 
-    	if($numero_filas>0){
-	        while ($proyectos_user = $result1->fetch_assoc()){
-	            $row_array['proyectos'][] = array(
-	                'CodigoProyecto' => $proyectos_user['CodigoProyecto'],
-	                'NombreProyecto' => $proyectos_user['NombreProyecto'],
-	                'DescripcionProyecto' => $proyectos_user['DescripcionProyecto'],
-	                'NombreEmpresa' => $proyectos_user['NombreEmpresa']
-	            );
+	        $json []=array_push($json_response, $row_array); //push the values in the array
+	    }
 
-	        }
+	}else{
+			$json_response = array('Mensaje' => 'Se ha equivocado en el usuario o el password');
+	}
 
-        }else{
-        		$row_array['proyectos'][] = array(
-	                'Mensaje' => 'Este Usuario no tiene proyectos asociados'
-	            );
-		}
-
-
-        $json []=array_push($json_response, $row_array); //push the values in the array
-    }
     $data['data'] = $json_response;
     
     echo json_encode($data);
@@ -178,8 +184,7 @@ $app->get('/proyectouser/{nombreUser}',  function (Request $request, Response $r
     if($result->num_rows!=0){
 
 	    while($row = $result->fetch_assoc()){	   
-	    	$json[]= $row;			
-	    	 //print_r($row['NombreUser']);	    	  
+	    	$json[]= $row;				    		    	 
 	  	}
 
    	}else{
@@ -190,6 +195,7 @@ $app->get('/proyectouser/{nombreUser}',  function (Request $request, Response $r
    	
     echo json_encode($data);
 });
+
 
 
 $app->post('/insertarempresas',  function (Request $request, Response $response) {	//insertar empresas		
@@ -206,7 +212,6 @@ $app->post('/insertarempresas',  function (Request $request, Response $response)
  	$telefonoEmpresa=$request->getParam('TelefonoEmpresa');
  	$direccionEmpresa=$request->getParam('DireccionEmpresa');
 
- 	//echo $nombreEmpresa;
 
  	$sql="INSERT INTO empresa(NombreEmpresa, TelefonoEmpresa, DireccionEmpresa) VALUES ('". $nombreEmpresa ." ','". $telefonoEmpresa ."','". $direccionEmpresa ."')";
 
@@ -233,7 +238,7 @@ $app->post('/insertarempresas',  function (Request $request, Response $response)
 
 
 
-$app->post('/insertarproyectos[/{user:.*}]',  function (Request $request, Response $response, $args) {	//Insertar proyectos SIN relacionarlos con un usuario	
+$app->post('/insertarproyectos[/{user:.*}]',  function (Request $request, Response $response, $args) {	//Insertar proyectos relacionarlos con un usuario	
 	
 	$db_host = "localhost";
 	$db_user = "root";
@@ -298,7 +303,6 @@ $app->post('/insertarproyectos[/{user:.*}]',  function (Request $request, Respon
 
 				}
 			    
-		
 		}else{
 			$json[] = array( "Mensaje"  => "La empresa no se ha encontrado");
 		}
