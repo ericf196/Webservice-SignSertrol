@@ -17,9 +17,11 @@ $app = new \Slim\App;
     return $response;
 });*/
 
-$app->get('/empresas[/{codigoEmpresa:.*}]',  function (Request $request, Response $response, $args) { // busca por codigo de la empresa
+
+
+
+$app->get('/empresas[/{codigoEmpresa:.*}]',  function (Request $request, Response $response, $args) { // busca por codigo de la empresa y sin codigo
 					
-	//echo $ticket_id = (string)$args['nombreEmpresa'];
 	$db_host = "localhost";
 	$db_user = "root";
 	$db_pass = "";
@@ -27,23 +29,29 @@ $app->get('/empresas[/{codigoEmpresa:.*}]',  function (Request $request, Respons
 
     $mysqli = new mysqli($db_host, $db_user, $db_pass, $db_name);
 
-    $sql= "SELECT * FROM empresa";
+	//$codigoEmpresa=$request->getParam('codigoEmpresa');
+	
+
+	if($args){		
+		$sql= "SELECT * FROM empresa WHERE CodigoEmpresa= '". $args['codigoEmpresa'] ."' ";
+	}else{
+		$sql= "SELECT * FROM empresa";
+	}
+    
 
     $result = $mysqli->query($sql);
     
     if($result->num_rows!=0){
 
 	    while($row = $result->fetch_assoc()){
-	    	  $json[]= $row;
-	    	  //print_r($json);
+	    	  $json[]= $row;	    	
 	  	}
 
    	}else{
-   		$json[] = array( "Mensaje"  => "Valor no encontrado en la base de datos");
+   		$json = array( "Mensaje"  => "Valor no encontrado en la base de datos");
    	}
 
-
-   	$data['data'] = $json;
+   	$data['empresas'] = $json;
     
     echo json_encode($data);
 });
@@ -110,16 +118,13 @@ if ($args) {
 
     $sql= "SELECT * FROM user WHERE NombreUser= '". $variableNombre ."' AND  PasswordUser= '". $variablePassword ."'";
 
-
-
-
     $sql1= "SELECT CodigoProyecto, NombreProyecto, DescripcionProyecto, NombreEmpresa FROM (((userxproyecto UXP INNER JOIN proyecto P ON UXP.IdProyecto = P.IdProyecto) INNER JOIN user U ON U.IdUser = UXP.IdUser) INNER JOIN empresa EMP ON EMP.IdEmpresa = P.IdEmpresa) WHERE UXP.IdUser=(SELECT IdUser FROM user WHERE NombreUser='". $variableNombre ."')";
 
 
     $result = $mysqli->query($sql); 
 	if ($result->num_rows!=0) {
 		
-	    $json_response = array(); //Create an array
+	    //$json_response="";  //Create an array
 	    while ($row = $result->fetch_assoc()){
 	        $row_array = array();
 	        	     
@@ -142,25 +147,87 @@ if ($args) {
 		            );
 
 		        }
-
 	        }else{
 	        		$row_array['proyectos'][] = array(
 		                'Mensaje' => 'Este Usuario no tiene proyectos asociados'
 		            );
 			}
 
-	        $json []=array_push($json_response, $row_array); //push the values in the array
+	        //$json =array_push($json_response, $row_array); //push the values in the array
 	    }
 
 	}else{
 			$json_response = array('Mensaje' => 'Se ha equivocado en el usuario o el password');
 	}
 
-    $data['data'] = $json_response;
+    //$data['data'] = $json_response;
     
-    echo json_encode($data);
+    echo json_encode($row_array);
     
 });
+
+
+
+$app->post('/loginprueba/{nombreUser}/{passwordUser}',  function (Request $request, Response $response , $args) { // login de el usuario se trae los proyectos relacionados con ese usuario    FALTA VALIDAR LOS CAMPOS
+		
+	$db_host = "localhost";
+	$db_user = "root";
+	$db_pass = "";
+	$db_name = "signsertrol";
+
+    $mysqli = new mysqli($db_host, $db_user, $db_pass, $db_name);
+
+if ($args) {
+		$variableNombre= (string)$args['nombreUser'];
+		$variablePassword= (string)$args['passwordUser'];
+	}
+
+    $sql= "SELECT * FROM user WHERE NombreUser= '". $variableNombre ."' AND  PasswordUser= '". $variablePassword ."'";
+
+    $sql1= "SELECT CodigoProyecto, NombreProyecto, DescripcionProyecto, NombreEmpresa FROM (((userxproyecto UXP INNER JOIN proyecto P ON UXP.IdProyecto = P.IdProyecto) INNER JOIN user U ON U.IdUser = UXP.IdUser) INNER JOIN empresa EMP ON EMP.IdEmpresa = P.IdEmpresa) WHERE UXP.IdUser=(SELECT IdUser FROM user WHERE NombreUser='". $variableNombre ."')";
+
+
+    $result = $mysqli->query($sql); 
+	if ($result->num_rows!=0) {
+			  
+	    while ($row = $result->fetch_assoc()){
+	         
+	        $result1 = $mysqli->query($sql1); 
+
+	        $numero_filas =  mysqli_num_rows($result1);
+
+	    	if($numero_filas>0){
+		        while ($proyectos_user = $result1->fetch_assoc()){
+		            $row_array['proyectos'][] = array(
+		                'CodigoProyecto' => $proyectos_user['CodigoProyecto'],
+		                'NombreProyecto' => $proyectos_user['NombreProyecto'],
+		                'DescripcionProyecto' => $proyectos_user['DescripcionProyecto'],
+		                'NombreEmpresa' => $proyectos_user['NombreEmpresa']
+		            );
+
+		        }
+	        }else{
+	        		$row_array['proyectos'][] = array(
+		                'Mensaje' => 'Este Usuario no tiene proyectos asociados'
+		            );
+			}
+
+	        //$json =array_push($json_response, $row_array); //push the values in the array
+	    }
+
+	}else{
+			$row_array = array('Mensaje' => 'Se ha equivocado en el usuario o el password');
+	}
+
+    //$data['data'] = $json_response;
+    
+    echo json_encode($row_array);
+    
+});
+
+
+
+
 
 
 $app->get('/proyectouser/{nombreUser}',  function (Request $request, Response $response, $args) { // proyectos relacionados al usuario
@@ -191,7 +258,7 @@ $app->get('/proyectouser/{nombreUser}',  function (Request $request, Response $r
    		$json[] = array( "Mensaje"  => "El usuario no existe o no tiene proyectos asociados");
    	}
 		
-   	$data['data'] = $json;
+   	$data['proyectos'] = $json;
    	
     echo json_encode($data);
 });
@@ -220,19 +287,18 @@ $app->post('/insertarempresas',  function (Request $request, Response $response)
 			$result = $mysqli->query($sql);
 		    
 		    if($result){
-		    	$json[] = array( "Mensaje"  => "Se inserto la empresa");
+		    	$json = array( "Mensaje"  => "Se inserto la empresa");
 		   	}else{
-		   		$json[] = array( "Mensaje"  => "No se ha insertado la empresa");
+		   		$json = array( "Mensaje"  => "No se ha insertado la empresa");
 		   	}
 
 	}else{
-		$json[] = array( "Mensaje"  => "Faltan campos en la peticion");
+		$json = array( "Mensaje"  => "Faltan campos en la peticion");
 	}
 		
    	$data['data'] = $json;
    	
-    echo json_encode($data);
-
+    echo json_encode($json);
 
 });
 
@@ -251,7 +317,6 @@ $app->post('/insertarproyectos[/{user:.*}]',  function (Request $request, Respon
  	$descripcionProyecto=$request->getParam('DescripcionProyecto');
  	$fechaCreacion=$request->getParam('FechaCreacion');
  	$nombreEmpresa=$request->getParam('NombreEmpresa');
-
 
  	$sql_empresa="SELECT IdEmpresa FROM empresa WHERE NombreEmpresa= '". $nombreEmpresa ."' ";
 
