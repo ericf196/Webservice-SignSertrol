@@ -197,8 +197,11 @@ if ($args) {
 	        $numero_filas =  mysqli_num_rows($result1);
 
 	    	if($numero_filas>0){
+	    		$row_array['encontrado']= 1;
+	    		$row_array['mensaje']= "El usuario tiene proyectos asociados";
 		        while ($proyectos_user = $result1->fetch_assoc()){
 		            $row_array['proyectos'][] = array(
+		            	
 		                'CodigoProyecto' => $proyectos_user['CodigoProyecto'],
 		                'NombreProyecto' => $proyectos_user['NombreProyecto'],
 		                'DescripcionProyecto' => $proyectos_user['DescripcionProyecto'],
@@ -207,20 +210,29 @@ if ($args) {
 
 		        }
 	        }else{
+	        		$row_array['encontrado']= 1;
+	        		$row_array['mensaje']= "El usuario no tiene proyectos asociados";
 	        		$row_array['proyectos'][] = array(
-		                'Mensaje' => 'Este Usuario no tiene proyectos asociados'
+	        			'CodigoProyecto' => null,
+		                'NombreProyecto' => null,
+		                'DescripcionProyecto' => null,
+		                'NombreEmpresa' => null	          
 		            );
 			}
-
-	        //$json =array_push($json_response, $row_array); //push the values in the array
+	       
 	    }
 
 	}else{
-			$row_array = array('Mensaje' => 'Se ha equivocado en el usuario o el password');
+			$row_array['encontrado']= 0;
+			$row_array['mensaje']= "El usuario no existe o su password es incorrecto";
+			$row_array['proyectos'][] = array(
+	        			'CodigoProyecto' => null,
+		                'NombreProyecto' => null,
+		                'DescripcionProyecto' => null,
+		                'NombreEmpresa' => null	              
+		            );;
 	}
 
-    //$data['data'] = $json_response;
-    
     echo json_encode($row_array);
     
 });
@@ -250,17 +262,38 @@ $app->get('/proyectouser/{nombreUser}',  function (Request $request, Response $r
     
     if($result->num_rows!=0){
 
-	    while($row = $result->fetch_assoc()){	   
-	    	$json[]= $row;				    		    	 
+	    while($row = $result->fetch_assoc()){	
+
+	    	 $numero_filas =  mysqli_num_rows($result);
+
+	    	if($numero_filas>0){
+	    		$row_array['encontrado']= 1;
+	    		$row_array['mensaje']= "El usuario tiene proyectos asociados";
+		        while ($proyectos_user = $result->fetch_assoc()){
+		            $row_array['proyectos'][] = array(		           
+		                'CodigoProyecto' => $proyectos_user['CodigoProyecto'],
+		                'NombreProyecto' => $proyectos_user['NombreProyecto'],
+		                'DescripcionProyecto' => $proyectos_user['DescripcionProyecto'],
+		                'NombreEmpresa' => $proyectos_user['NombreEmpresa']
+		            );
+
+		        }
+	        }    		    	 
 	  	}
 
    	}else{
-   		$json[] = array( "Mensaje"  => "El usuario no existe o no tiene proyectos asociados");
-   	}
-		
-   	$data['proyectos'] = $json;
-   	
-    echo json_encode($data);
+   						$row_array['encontrado']= 1;
+	        			$row_array['mensaje']= "El usuario no tiene proyectos asociados";
+	        			$row_array['proyectos'][] = array(
+	        			'CodigoProyecto' => null,
+		                'NombreProyecto' => null,
+		                'DescripcionProyecto' => null,
+		                'NombreEmpresa' => null	          
+		            );
+			}
+   
+   
+    echo json_encode($row_array);
 });
 
 
