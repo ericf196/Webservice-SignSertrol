@@ -10,13 +10,6 @@ require 'db_config.php'; // no funciona
 
 
 $app = new \Slim\App;
-/*$app->get('/hola/{name}', function (Request $request, Response $response) {
-    $name = $request->getAttribute('name');
-    $response->getBody()->write("hola, $name");
-
-    return $response;
-});*/
-
 
 
 
@@ -313,14 +306,15 @@ $app->post('/insertarempresas',  function (Request $request, Response $response)
  	$direccionEmpresa=$request->getParam('DireccionEmpresa');
 
 
- 	$sql="INSERT INTO empresa(NombreEmpresa, TelefonoEmpresa, DireccionEmpresa) VALUES ('". $nombreEmpresa ." ','". $telefonoEmpresa ."','". $direccionEmpresa ."')";
+ 	$sql="INSERT INTO empresa(CodigoEmpresa, NombreEmpresa, TelefonoEmpresa, DireccionEmpresa) VALUES ('". generarCodigo($variable="empresa") ."' , '". $nombreEmpresa ." ','". $telefonoEmpresa ."','". $direccionEmpresa ."')";
 
  	if($nombreEmpresa && $telefonoEmpresa && $direccionEmpresa){
 
 			$result = $mysqli->query($sql);
+			
 		    
 		    if($result){
-		    	$json = array( "Mensaje"  => "Se inserto la empresa");
+		    	$json = array( "Mensaje"  => "Se inserto la empresa " . generarCodigo($variable="empresa"));
 		   	}else{
 		   		$json = array( "Mensaje"  => "No se ha insertado la empresa");
 		   	}
@@ -361,15 +355,17 @@ $app->post('/insertarproyectos[/{user:.*}]',  function (Request $request, Respon
 
  	if($nombreProyecto && $descripcionProyecto && $fechaCreacion && $nombreEmpresa && $userValido){
  		$result_empresa = $mysqli->query($sql_empresa);
-
+		
  		if($result_empresa->num_rows!=0){
 				$idEmpresa[]= $result_empresa->fetch_assoc();
 
-	 			$sql="INSERT INTO proyecto(NombreProyecto, DescripcionProyecto, FechaCreacion, IdEmpresa) VALUES ('". $nombreProyecto ." ','". $descripcionProyecto ."','". $fechaCreacion ."','". $idEmpresa[0]['IdEmpresa'] ."')";
+				//GENERARCODIGO SIN PROBAR
 
+	 			$sql="INSERT INTO proyecto(CodigoProyecto ,NombreProyecto, DescripcionProyecto, FechaCreacion, IdEmpresa) VALUES ('". generarCodigo($variable="proyecto") ."','". $nombreProyecto ." ','". $descripcionProyecto ."','2017-05-06','". $idEmpresa[0]['IdEmpresa'] ."')";
+	 																//. $fechaCreacion .
 				$result = $mysqli->query($sql);
 
-				if ($args){
+				if ($args && $result){
 
 					$variable_user= (string)$args['user'];
 					$sql_id_proyecto_max="SELECT Max(IdProyecto) AS IdProyecto FROM proyecto";
@@ -386,34 +382,68 @@ $app->post('/insertarproyectos[/{user:.*}]',  function (Request $request, Respon
 					$result_user = $mysqli->query($sql_user);
 		    
 				    if($result_user){
-				    	$json[] = array( "Mensaje"  => "Se inserto el proyecto con un usuario relacionado");
+				    	$json = array( "Mensaje"  => "Se inserto el proyecto con un usuario relacionado");
 				   	}else{
-				   		$json[] = array( "Mensaje"  => "No inserto el proyecto con un usuario relacionado");
+				   		$json = array( "Mensaje"  => "No inserto el proyecto con un usuario relacionado");
 				   	}
 
 				}else{
 
 					if($result){
-			    		$json[] = array( "Mensaje"  => "Se inserto el proyecto correctamente");
+			    		$json = array( "Mensaje"  => "Se inserto el proyecto correctamente");
 				   	}else{
-				   		$json[] = array( "Mensaje"  => "No se ha insertado el proyecto");
+				   		$json = array( "Mensaje"  => "No se ha insertado el proyecto"  );
 				   	}
 
 				}
 			    
 		}else{
-			$json[] = array( "Mensaje"  => "La empresa no se ha encontrado");
+			$json = array( "Mensaje"  => "La empresa no se ha encontrado");
 		}
 
 	}else{
-		$json[] = array( "Mensaje"  => "Faltan campos en la peticion o el usuario por parametro no exite");
+		$json = array( "Mensaje"  => "Faltan campos en la peticion o el usuario por parametro no exite");
 	}
 		
-   	$data['data'] = $json;
+   	//$data['data'] = $json;
    	
-    echo json_encode($data);
+    echo json_encode($json);
 
 
 });
+
+
+function generarCodigo($favcolor) {
+
+	$db_host = "localhost";
+	$db_user = "root";
+	$db_pass = "";
+	$db_name = "signsertrol";
+
+ 	$mysqli = new mysqli($db_host, $db_user, $db_pass, $db_name);
+
+switch ($favcolor) {
+    case "empresa":
+
+    	$sql="SELECT Max(IdEmpresa) AS IdEmpresa FROM empresa";    
+    	$result = $mysqli->query($sql);
+    	$id_empresa_max[]= $result->fetch_assoc();
+
+        return "EMP-0".($id_empresa_max[0]['IdEmpresa']+1);
+        break;
+    case "proyecto":
+
+    	$sql="SELECT Max(IdProyecto) AS IdProyecto FROM proyecto";    
+    	$result = $mysqli->query($sql);
+    	$id_proyecto_max[]= $result->fetch_assoc();
+
+        return "PRO-0".($id_proyecto_max[0]['IdProyecto']+1);
+        
+        break;   
+    default:
+        return "";
+}
+}
+
 
 $app->run();
