@@ -11,8 +11,6 @@ require 'db_config.php'; // no funciona
 
 $app = new \Slim\App;
 
-
-
 $app->get('/empresas[/{codigoEmpresa:.*}]',  function (Request $request, Response $response, $args) { // busca por codigo de la empresa y sin codigo
 					
 	$db_host = "localhost";
@@ -21,9 +19,6 @@ $app->get('/empresas[/{codigoEmpresa:.*}]',  function (Request $request, Respons
 	$db_name = "signsertrol";
 
     $mysqli = new mysqli($db_host, $db_user, $db_pass, $db_name);
-
-	//$codigoEmpresa=$request->getParam('codigoEmpresa');
-	
 
 	if($args){		
 		$sql= "SELECT * FROM empresa WHERE CodigoEmpresa= '". $args['codigoEmpresa'] ."' ";
@@ -253,15 +248,10 @@ $app->get('/proyectouser/{nombreUser}',  function (Request $request, Response $r
 
     $result = $mysqli->query($sql);
     
-    if($result->num_rows!=0){
+    	if($result->num_rows!=0){
 
-	    while($row = $result->fetch_assoc()){	
-
-	    	 $numero_filas =  mysqli_num_rows($result);
-
-	    	if($numero_filas>0){
 	    		$row_array['encontrado']= 1;
-	    		$row_array['mensaje']= "El usuario tiene proyectos asociados";
+	    		$row_array['mensaje']= "El usuario tiene proyectos asociados";	    	
 		        while ($proyectos_user = $result->fetch_assoc()){
 		            $row_array['proyectos'][] = array(		           
 		                'CodigoProyecto' => $proyectos_user['CodigoProyecto'],
@@ -271,10 +261,7 @@ $app->get('/proyectouser/{nombreUser}',  function (Request $request, Response $r
 		            );
 
 		        }
-	        }    		    	 
-	  	}
-
-   	}else{
+   		}else{
    						$row_array['encontrado']= 1;
 	        			$row_array['mensaje']= "El usuario no tiene proyectos asociados";
 	        			$row_array['proyectos'][] = array(
@@ -306,7 +293,7 @@ $app->post('/insertarempresas',  function (Request $request, Response $response)
  	$direccionEmpresa=$request->getParam('DireccionEmpresa');
 
 
- 	$sql="INSERT INTO empresa(CodigoEmpresa, NombreEmpresa, TelefonoEmpresa, DireccionEmpresa) VALUES ('". generarCodigo($variable="empresa") ."' , '". $nombreEmpresa ." ','". $telefonoEmpresa ."','". $direccionEmpresa ."')";
+ 	$sql="INSERT INTO empresa(CodigoEmpresa, NombreEmpresa, TelefonoEmpresa, DireccionEmpresa,EstatusEmpresa) VALUES ('". generarCodigo($variable="empresa") ."' , '". $nombreEmpresa ." ','". $telefonoEmpresa ."','". $direccionEmpresa ."','Activo')";
 
  	if($nombreEmpresa && $telefonoEmpresa && $direccionEmpresa){
 
@@ -325,6 +312,89 @@ $app->post('/insertarempresas',  function (Request $request, Response $response)
 		
    	$data['data'] = $json;
    	
+    echo json_encode($json);
+
+});
+
+$app->post('/updateempresas',  function (Request $request, Response $response) {	//update empresas		
+	//echo (string)$args['codigoProyecto'];
+	
+	$db_host = "localhost";
+	$db_user = "root";
+	$db_pass = "";
+	$db_name = "signsertrol";
+
+ 	$mysqli = new mysqli($db_host, $db_user, $db_pass, $db_name);
+
+ 	$nombreEmpresa=$request->getParam('NombreEmpresa');
+ 	$telefonoEmpresa=$request->getParam('TelefonoEmpresa');
+ 	$direccionEmpresa=$request->getParam('DireccionEmpresa');
+ 	$codigoEmpresa=$request->getParam('CodigoEmpresa');
+
+ 	$sql_empresa_existe=" SELECT IdEmpresa FROM empresa WHERE CodigoEmpresa='". $codigoEmpresa ."' ";
+
+ 	$result_empresa_existe = $mysqli->query($sql_empresa_existe);
+	$empresa_existe = ($result_empresa_existe->num_rows!=0) ? TRUE : FALSE;
+	
+
+ 	if($nombreEmpresa && $telefonoEmpresa && $direccionEmpresa && $empresa_existe){
+ 		$sql_update="UPDATE empresa SET NombreEmpresa='". $nombreEmpresa ."', TelefonoEmpresa='". $telefonoEmpresa ."',`DireccionEmpresa`='". $direccionEmpresa ."' WHERE CodigoEmpresa='". $codigoEmpresa ."'";
+
+			$result = $mysqli->query($sql_update);
+			
+		    if($result){
+		    	$json = array( "Mensaje"  => "Se modifico la empresa");
+		   	}else{
+		   		$json = array( "Mensaje"  => "No se ha modificado la empresa");
+		   	}
+
+	}else{
+		$json = array( "Mensaje"  => "Faltan campos en la peticion o la empresa no existe");
+	}
+		   
+    echo json_encode($json);
+
+});
+
+
+$app->post('/deleteempresas',  function (Request $request, Response $response) {	//update empresas		
+	//echo (string)$args['codigoProyecto'];
+	
+	$db_host = "localhost";
+	$db_user = "root";
+	$db_pass = "";
+	$db_name = "signsertrol";
+
+ 	$mysqli = new mysqli($db_host, $db_user, $db_pass, $db_name);
+
+ 	$codigoEmpresa=$request->getParam('CodigoEmpresa');
+
+ 	$sql_empresa_existe=" SELECT IdEmpresa FROM empresa WHERE CodigoEmpresa='". $codigoEmpresa ."' ";
+
+ 	$result_empresa_existe = $mysqli->query($sql_empresa_existe);
+	$id_empresa=$result_empresa_existe->fetch_assoc();
+
+	$empresa_existe = ($result_empresa_existe->num_rows!=0) ? TRUE : FALSE;
+	$sql_empresa_vinculada="SELECT IdEmpresa FROM proyecto WHERE IdEmpresa='". $id_empresa['IdEmpresa'] ."'";
+	$result_empresa_vinculada = $mysqli->query($sql_empresa_vinculada);
+
+	$empresa_vinculada_existe = ($result_empresa_vinculada->num_rows!=0) ? TRUE : FALSE;
+
+ 	if($empresa_existe && !$empresa_vinculada_existe){
+ 		$sql_update="UPDATE empresa SET EstatusEmpresa='Inactivo' WHERE CodigoEmpresa='". $codigoEmpresa ."'";
+
+			$result = $mysqli->query($sql_update);
+			
+		    if($result){
+		    	$json = array( "Mensaje"  => "Se Borro la empresa");
+		   	}else{
+		   		$json = array( "Mensaje"  => "No se ha Borro la empresa");
+		   	}
+
+	}else{
+		$json = array( "Mensaje"  => "La empresa esta vinculada o la empresa no existe");
+	}
+		   
     echo json_encode($json);
 
 });
@@ -361,7 +431,7 @@ $app->post('/insertarproyectos[/{user:.*}]',  function (Request $request, Respon
 
 				//GENERARCODIGO SIN PROBAR
 
-	 			$sql="INSERT INTO proyecto(CodigoProyecto ,NombreProyecto, DescripcionProyecto, FechaCreacion, IdEmpresa) VALUES ('". generarCodigo($variable="proyecto") ."','". $nombreProyecto ." ','". $descripcionProyecto ."','2017-05-06','". $idEmpresa[0]['IdEmpresa'] ."')";
+	 			$sql="INSERT INTO proyecto(CodigoProyecto ,NombreProyecto, DescripcionProyecto, FechaCreacion, IdEmpresa) VALUES ('". generarCodigo($variable="proyecto") ."','". $nombreProyecto ."','". $descripcionProyecto ."','". $fechaCreacion ."','". $idEmpresa[0]['IdEmpresa'] ."')";
 	 																//. $fechaCreacion .
 				$result = $mysqli->query($sql);
 
